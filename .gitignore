@@ -6,7 +6,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+
 downloads/
 eggs/
 .eggs/
@@ -60,3 +60,5 @@ screenshots/
 # Keep old files during transition
 call_model.py
 app_package_name.py
+
+build

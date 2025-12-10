@@ -20,10 +20,22 @@ import subprocess
 import sys
 from urllib.parse import urlparse
 
-# Load .env file if exists
+# Load .env file from current working directory
+# This ensures the exe reads .env from where it's executed, not from inside the package
+_env_loaded = False
+_env_path = None
 try:
+    from pathlib import Path
     from dotenv import load_dotenv
-    load_dotenv()
+
+    # Look for .env in current working directory
+    _env_path = Path.cwd() / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+        _env_loaded = True
+    else:
+        # Fallback: try default behavior
+        load_dotenv()
 except ImportError:
     pass
 
@@ -34,6 +46,116 @@ from phone_agent.adb import ADBConnection, list_devices
 from phone_agent.agent import AgentConfig
 from phone_agent.config.apps import list_supported_apps
 from phone_agent.model import ModelConfig
+
+
+def print_banner():
+    """Print the startup banner with author info and contact QR code hint."""
+    banner = r"""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║     ██████╗ ██╗  ██╗ ██████╗ ███╗   ██╗███████╗     █████╗  ██████╗ ████████╗║
+║     ██╔══██╗██║  ██║██╔═══██╗████╗  ██║██╔════╝    ██╔══██╗██╔════╝ ╚══██╔══╝║
+║     ██████╔╝███████║██║   ██║██╔██╗ ██║█████╗      ███████║██║  ███╗   ██║   ║
+║     ██╔═══╝ ██╔══██║██║   ██║██║╚██╗██║██╔══╝      ██╔══██║██║   ██║   ██║   ║
+║     ██║     ██║  ██║╚██████╔╝██║ ╚████║███████╗    ██║  ██║╚██████╔╝   ██║   ║
+║     ╚═╝     ╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝    ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ║
+║                                                                              ║
+║                    AI 智能手机自动化控制系统                                 ║
+║                                                                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║   ★ 人：曾记大排档                                                        ║
+║   ★ 特点：二开效果 | 无需显卡 | 无需花钱部署 | 无脑操作                     ║
+║                                                                              ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║
+║   【扫码联系】打开 qrcode.jpg 扫码添加微信 加入交流群                          ║
+║                                                                              ║
+║   如需技术协助、定制开发、问题咨询，请联系                              ║
+║   微信号：le6688zmm                                                          ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+"""
+    print(banner)
+
+
+def check_env_config() -> bool:
+    """
+    Check if .env file exists and required configuration is set.
+
+    Returns:
+        True if configuration is valid, False otherwise.
+    """
+    import time
+
+    api_key = os.getenv("MODELSCOPE_API_KEY", "").strip()
+
+    # Check if .env file exists
+    if not _env_loaded:
+        print()
+        print("=" * 60)
+        print("❌ 配置文件缺失")
+        print("=" * 60)
+        print()
+        print("未找到 .env 配置文件！")
+        print()
+        print("请按以下步骤配置：")
+        print("  1. 复制 .env.example 为 .env")
+        print("  2. 编辑 .env 文件，填入您的配置")
+        print()
+        print("-" * 60)
+        print("获取 API Key：")
+        print("  请到魔塔社区复制访问令牌")
+        print("  网址：https://modelscope.cn/my/myaccesstoken")
+        print()
+        print("-" * 60)
+        print("如需技术协助：")
+        print("  微信：le6688zmm")
+        print("  或查看 qrcode.jpg 扫码添加")
+        print("=" * 60)
+        print()
+        # Wait 60 seconds before exit
+        for i in range(60, 0, -1):
+            print(f"\r{i} 秒后自动关闭终端...", end="", flush=True)
+            time.sleep(1)
+        print()
+        return False
+
+    # Check if API key is configured
+    if not api_key or api_key == "EMPTY" or api_key == "your_modelscope_api_key_here":
+        print()
+        print("=" * 60)
+        print("❌ API Key 未配置")
+        print("=" * 60)
+        print()
+        print(f"已加载配置文件：{_env_path}")
+        print("但 MODELSCOPE_API_KEY 未正确配置！")
+        print()
+        print("请按以下步骤配置：")
+        print("  1. 编辑 .env 文件")
+        print("  2. 将 MODELSCOPE_API_KEY 设置为您的访问令牌")
+        print()
+        print("-" * 60)
+        print("获取 API Key：")
+        print("  请到魔塔社区复制访问令牌")
+        print("  网址：https://modelscope.cn/my/myaccesstoken")
+        print()
+        print("-" * 60)
+        print("如需技术协助：")
+        print("  微信：le6688zmm")
+        print("  或查看 qrcode.jpg 扫码添加")
+        print("=" * 60)
+        print()
+        # Wait 60 seconds before exit
+        for i in range(60, 0, -1):
+            print(f"\r{i} 秒后自动关闭终端...", end="", flush=True)
+            time.sleep(1)
+        print()
+        return False
+
+    # Configuration is valid
+    print(f"✅ 已加载配置：{_env_path}")
+    return True
 
 
 def check_system_requirements() -> bool:
@@ -464,6 +586,9 @@ def handle_device_commands(args) -> bool:
 
 def main():
     """Main entry point."""
+    # Print startup banner
+    print_banner()
+
     args = parse_args()
 
     # Handle --list-apps (no system check needed)
@@ -476,6 +601,10 @@ def main():
     # Handle device commands (these may need partial system checks)
     if handle_device_commands(args):
         return
+
+    # Check .env configuration first
+    if not check_env_config():
+        sys.exit(1)
 
     # Run system requirements check before proceeding
     if not check_system_requirements():

@@ -8,9 +8,9 @@ Usage:
 Environment Variables:
     PHONE_AGENT_BASE_URL: Model API base URL (default: http://localhost:8000/v1)
     PHONE_AGENT_MODEL: Model name (default: autoglm-phone-9b)
-    PHONE_AGENT_API_KEY: API key for model authentication (default: EMPTY)
     PHONE_AGENT_MAX_STEPS: Maximum steps per task (default: 100)
     PHONE_AGENT_DEVICE_ID: ADB device ID for multi-device setups
+    MODELSCOPE_API_KEY: API key for ModelScope
 """
 
 import argparse
@@ -19,6 +19,13 @@ import shutil
 import subprocess
 import sys
 from urllib.parse import urlparse
+
+# Load .env file if exists
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 from openai import OpenAI
 
@@ -203,21 +210,23 @@ def check_model_api(base_url: str, model_name: str, api_key: str = "EMPTY") -> b
 
         print("✅ OK")
 
-        # Check 2: Model exists
-        """
+        # Check 2: Model exists (warning only for ModelScope, as some models may not be listed)
         print(f"2. Checking model '{model_name}'...", end=" ")
         if model_name in available_models:
             print("✅ OK")
         else:
-            print("❌ FAILED")
-            print(f"   Error: Model '{model_name}' not found.")
-            print(f"   Available models:")
-            for m in available_models[:10]:  # Show first 10 models
-                print(f"     - {m}")
-            if len(available_models) > 10:
-                print(f"     ... and {len(available_models) - 10} more")
-            all_passed = False
-        """
+            # For ModelScope API, model might not be listed but still callable
+            if "modelscope" in base_url.lower():
+                print("⚠️ Not in list (will try anyway)")
+            else:
+                print("❌ FAILED")
+                print(f"   Error: Model '{model_name}' not found.")
+                print(f"   Available models:")
+                for m in available_models[:10]:  # Show first 10 models
+                    print(f"     - {m}")
+                if len(available_models) > 10:
+                    print(f"     ... and {len(available_models) - 10} more")
+                all_passed = False
 
     except Exception as e:
         print("❌ FAILED")
@@ -271,9 +280,6 @@ Examples:
     # Specify model endpoint
     python main.py --base-url http://localhost:8000/v1
 
-    # Use API key for authentication
-    python main.py --apikey sk-xxxxx
-
     # Run with specific device
     python main.py --device-id emulator-5554
 
@@ -307,10 +313,10 @@ Examples:
     )
 
     parser.add_argument(
-        "--apikey",
+        "--api-key",
         type=str,
-        default=os.getenv("PHONE_AGENT_API_KEY", "EMPTY"),
-        help="API key for model authentication",
+        default=os.getenv("MODELSCOPE_API_KEY", "EMPTY"),
+        help="API key for model service (or set MODELSCOPE_API_KEY env var)",
     )
 
     parser.add_argument(
@@ -476,14 +482,14 @@ def main():
         sys.exit(1)
 
     # Check model API connectivity and model availability
-    if not check_model_api(args.base_url, args.model, args.apikey):
+    if not check_model_api(args.base_url, args.model, args.api_key):
         sys.exit(1)
 
     # Create configurations
     model_config = ModelConfig(
         base_url=args.base_url,
         model_name=args.model,
-        api_key=args.apikey,
+        api_key=args.api_key,
     )
 
     agent_config = AgentConfig(

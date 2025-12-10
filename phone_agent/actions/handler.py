@@ -141,6 +141,7 @@ class ActionHandler:
             return ActionResult(False, False, "No element coordinates")
 
         x, y = self._convert_relative_to_absolute(element, width, height)
+        print(f"[DEBUG] Tap: relative={element} -> absolute=({x}, {y}), screen={width}x{height}")
 
         # Check for sensitive operation
         if "message" in action:
@@ -278,19 +279,34 @@ def parse_action(response: str) -> dict[str, Any]:
     Raises:
         ValueError: If the response cannot be parsed.
     """
+    import re
+
     try:
-        # Try to evaluate as Python dict/function call
         response = response.strip()
-        if response.startswith("do"):
+
+        # Try to find do(...) or finish(...) pattern in the response
+        do_match = re.search(r'do\s*\([^)]+\)', response, re.DOTALL)
+        finish_match = re.search(r'finish\s*\([^)]*\)', response, re.DOTALL)
+
+        if do_match:
+            action_str = do_match.group(0)
+            action = eval(action_str)
+            return action
+        elif finish_match:
+            action_str = finish_match.group(0)
+            action = eval(action_str)
+            return action
+        elif response.startswith("do"):
             action = eval(response)
+            return action
         elif response.startswith("finish"):
             action = {
                 "_metadata": "finish",
                 "message": response.replace("finish(message=", "")[1:-2],
             }
+            return action
         else:
-            raise ValueError(f"Failed to parse action: {response}")
-        return action
+            raise ValueError(f"Failed to parse action: {response[:200]}")
     except Exception as e:
         raise ValueError(f"Failed to parse action: {e}")
 

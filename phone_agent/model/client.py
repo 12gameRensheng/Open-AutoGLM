@@ -1,6 +1,7 @@
 """Model client for AI inference using OpenAI-compatible API."""
 
 import json
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -12,7 +13,7 @@ class ModelConfig:
     """Configuration for the AI model."""
 
     base_url: str = "http://localhost:8000/v1"
-    api_key: str = "EMPTY"
+    api_key: str = field(default_factory=lambda: os.getenv("MODELSCOPE_API_KEY", "EMPTY"))
     model_name: str = "autoglm-phone-9b"
     max_tokens: int = 3000
     temperature: float = 0.0
@@ -57,17 +58,34 @@ class ModelClient:
         Raises:
             ValueError: If the response cannot be parsed.
         """
-        response = self.client.chat.completions.create(
-            messages=messages,
-            model=self.config.model_name,
-            max_tokens=self.config.max_tokens,
-            temperature=self.config.temperature,
-            top_p=self.config.top_p,
-            frequency_penalty=self.config.frequency_penalty,
-            extra_body=self.config.extra_body,
-        )
-
-        raw_content = response.choices[0].message.content
+        # Try non-streaming first, fall back to streaming if needed
+        try:
+            response = self.client.chat.completions.create(
+                messages=messages,
+                model=self.config.model_name,
+                max_tokens=self.config.max_tokens,
+                temperature=self.config.temperature,
+                top_p=self.config.top_p,
+                frequency_penalty=self.config.frequency_penalty,
+                extra_body=self.config.extra_body,
+                stream=False,
+            )
+            raw_content = response.choices[0].message.content
+        except Exception:
+            # Fall back to streaming mode (for ModelScope API)
+            response = self.client.chat.completions.create(
+                messages=messages,
+                model=self.config.model_name,
+                max_tokens=self.config.max_tokens,
+                temperature=self.config.temperature,
+                top_p=self.config.top_p,
+                frequency_penalty=self.config.frequency_penalty,
+                stream=True,
+            )
+            raw_content = ""
+            for chunk in response:
+                if chunk.choices[0].delta.content:
+                    raw_content += chunk.choices[0].delta.content
 
         # Parse thinking and action from response
         thinking, action = self._parse_response(raw_content)

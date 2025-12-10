@@ -46,10 +46,12 @@ def tap(x: int, y: int, device_id: str | None = None, delay: float = 1.0) -> Non
         delay: Delay in seconds after tap.
     """
     adb_prefix = _get_adb_prefix(device_id)
+    cmd = adb_prefix + ["shell", "input", "tap", str(x), str(y)]
+    print(f"[DEBUG] Executing tap: {' '.join(cmd)}")
 
-    subprocess.run(
-        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True
-    )
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"[DEBUG] Tap failed: {result.stderr}")
     time.sleep(delay)
 
 

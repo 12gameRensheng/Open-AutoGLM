@@ -39,6 +39,8 @@ def type_text(text: str, device_id: str | None = None) -> None:
         capture_output=True,
         text=True,
         creationflags=CREATE_NO_WINDOW,
+        encoding='utf-8',
+        errors='ignore',
     )
 
 
@@ -56,6 +58,8 @@ def clear_text(device_id: str | None = None) -> None:
         capture_output=True,
         text=True,
         creationflags=CREATE_NO_WINDOW,
+        encoding='utf-8',
+        errors='ignore',
     )
 
 
@@ -77,8 +81,10 @@ def detect_and_set_adb_keyboard(device_id: str | None = None) -> str:
         capture_output=True,
         text=True,
         creationflags=CREATE_NO_WINDOW,
+        encoding='utf-8',
+        errors='ignore',
     )
-    current_ime = (result.stdout + result.stderr).strip()
+    current_ime = ((result.stdout or "") + (result.stderr or "")).strip()
 
     # Switch to ADB Keyboard if not already set
     if "com.android.adbkeyboard/.AdbIME" not in current_ime:
@@ -87,6 +93,8 @@ def detect_and_set_adb_keyboard(device_id: str | None = None) -> str:
             capture_output=True,
             text=True,
             creationflags=CREATE_NO_WINDOW,
+            encoding='utf-8',
+            errors='ignore',
         )
 
     # Warm up the keyboard
@@ -107,7 +115,7 @@ def restore_keyboard(ime: str, device_id: str | None = None) -> None:
 
     subprocess.run(
         adb_prefix + ["shell", "ime", "set", ime], capture_output=True, text=True,
-        creationflags=CREATE_NO_WINDOW
+        creationflags=CREATE_NO_WINDOW, encoding='utf-8', errors='ignore'
     )
 
 

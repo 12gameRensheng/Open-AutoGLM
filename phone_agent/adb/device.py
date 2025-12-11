@@ -26,9 +26,9 @@ def get_current_app(device_id: str | None = None) -> str:
 
     result = subprocess.run(
         adb_prefix + ["shell", "dumpsys", "window"], capture_output=True, text=True,
-        creationflags=CREATE_NO_WINDOW
+        creationflags=CREATE_NO_WINDOW, encoding='utf-8', errors='ignore'
     )
-    output = result.stdout
+    output = result.stdout or ""
 
     # Parse window focus info
     for line in output.split("\n"):
@@ -55,7 +55,7 @@ def tap(x: int, y: int, device_id: str | None = None, delay: float = 1.0) -> Non
     print(f"[DEBUG] Executing tap: {' '.join(cmd)}")
 
     result = subprocess.run(cmd, capture_output=True, text=True,
-                           creationflags=CREATE_NO_WINDOW)
+                           creationflags=CREATE_NO_WINDOW, encoding='utf-8', errors='ignore')
     if result.returncode != 0:
         print(f"[DEBUG] Tap failed: {result.stderr}")
     time.sleep(delay)

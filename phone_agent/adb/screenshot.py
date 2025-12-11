@@ -52,10 +52,12 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             text=True,
             timeout=timeout,
             creationflags=CREATE_NO_WINDOW,
+            encoding='utf-8',
+            errors='ignore',
         )
 
         # Check for screenshot failure (sensitive screen)
-        output = result.stdout + result.stderr
+        output = (result.stdout or "") + (result.stderr or "")
         if "Status: -1" in output or "Failed" in output:
             return _create_fallback_screenshot(is_sensitive=True)
 
@@ -66,6 +68,8 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             text=True,
             timeout=5,
             creationflags=CREATE_NO_WINDOW,
+            encoding='utf-8',
+            errors='ignore',
         )
 
         if not os.path.exists(temp_path):

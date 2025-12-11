@@ -281,17 +281,46 @@ def parse_action(response: str) -> dict[str, Any]:
     try:
         # Try to evaluate as Python dict/function call
         response = response.strip()
-        if response.startswith("do"):
-            action = eval(response)
-        elif response.startswith("finish"):
-            action = {
-                "_metadata": "finish",
-                "message": response.replace("finish(message=", "")[1:-2],
-            }
+
+        # Handle multi-line response - find the actual action line
+        lines = response.split('\n')
+        action_line = None
+        for line in lines:
+            line = line.strip()
+            if line.startswith("do(") or line.startswith("finish("):
+                action_line = line
+                break
+
+        if action_line is None:
+            # Try the whole response
+            action_line = response
+
+        if action_line.startswith("do"):
+            # Make sure the action line is complete
+            if not action_line.endswith(")"):
+                # Try to find closing parenthesis
+                paren_count = action_line.count("(") - action_line.count(")")
+                if paren_count > 0:
+                    action_line += ")" * paren_count
+            action = eval(action_line)
+        elif action_line.startswith("finish"):
+            # Parse finish action more robustly
+            if "message=" in action_line:
+                # Extract message content
+                import re
+                match = re.search(r'finish\(message=["\'](.+?)["\']\)', action_line)
+                if match:
+                    action = {"_metadata": "finish", "message": match.group(1)}
+                else:
+                    action = {"_metadata": "finish", "message": action_line}
+            else:
+                action = {"_metadata": "finish", "message": "Task completed"}
         else:
             raise ValueError(f"Failed to parse action: {response}")
         return action
     except Exception as e:
+        print(f"[parse_action] Error parsing: {response}")
+        print(f"[parse_action] Exception: {e}")
         raise ValueError(f"Failed to parse action: {e}")
 
 

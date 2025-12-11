@@ -61,6 +61,9 @@ class PhoneAgent:
         >>> agent.run("Open WeChat and send a message to John")
     """
 
+    # Loop detection settings
+    MAX_SAME_ACTION_COUNT = 3  # Max times to repeat same action before breaking loop
+
     def __init__(
         self,
         model_config: ModelConfig | None = None,
@@ -80,6 +83,7 @@ class PhoneAgent:
 
         self._context: list[dict[str, Any]] = []
         self._step_count = 0
+        self._last_actions: list[str] = []  # Track recent actions for loop detection
 
     def run(self, task: str) -> str:
         """
@@ -132,16 +136,60 @@ class PhoneAgent:
         """Reset the agent state for a new task."""
         self._context = []
         self._step_count = 0
+        self._last_actions = []
+
+    def _get_action_signature(self, action: dict[str, Any]) -> str:
+        """Get a signature string for an action to detect duplicates."""
+        action_type = action.get("action", "")
+        element = action.get("element", [])
+        return f"{action_type}:{element}"
+
+    def _is_loop_detected(self, action: dict[str, Any]) -> bool:
+        """Check if we're stuck in a loop executing the same action."""
+        sig = self._get_action_signature(action)
+        self._last_actions.append(sig)
+
+        # Keep only recent actions
+        if len(self._last_actions) > self.MAX_SAME_ACTION_COUNT + 1:
+            self._last_actions = self._last_actions[-self.MAX_SAME_ACTION_COUNT - 1:]
+
+        # Check if last N actions are the same
+        if len(self._last_actions) >= self.MAX_SAME_ACTION_COUNT:
+            recent = self._last_actions[-self.MAX_SAME_ACTION_COUNT:]
+            if len(set(recent)) == 1:
+                print(f"[Agent] ⚠️ Loop detected! Same action repeated {self.MAX_SAME_ACTION_COUNT} times: {sig}")
+                return True
+
+        return False
+
+    def _break_loop(self, screenshot_height: int) -> dict[str, Any]:
+        """Create an action to break out of a loop (scroll down)."""
+        print("[Agent] Breaking loop by scrolling down...")
+        self._last_actions = []  # Reset action history
+
+        # Scroll down to see new content
+        return do(
+            action="Swipe",
+            startPoint=[540, int(screenshot_height * 0.7)],
+            endPoint=[540, int(screenshot_height * 0.3)],
+            duration="500ms"
+        )
 
     def _execute_step(
         self, user_prompt: str | None = None, is_first: bool = False
     ) -> StepResult:
         """Execute a single step of the agent loop."""
         self._step_count += 1
+        print(f"\n[Agent] ===== Step {self._step_count} =====")
 
         # Capture current screen state
+        print("[Agent] Capturing screenshot...")
         screenshot = get_screenshot(self.agent_config.device_id)
+        print(f"[Agent] Screenshot: {screenshot.width}x{screenshot.height}, sensitive={screenshot.is_sensitive}")
+
+        print("[Agent] Getting current app...")
         current_app = get_current_app(self.agent_config.device_id)
+        print(f"[Agent] Current app: {current_app}")
 
         # Build messages
         if is_first:
@@ -169,8 +217,11 @@ class PhoneAgent:
 
         # Get model response
         try:
+            print("[Agent] Requesting model response...")
             response = self.model_client.request(self._context)
+            print(f"[Agent] Model response received")
         except Exception as e:
+            print(f"[Agent] Model request failed: {e}")
             if self.agent_config.verbose:
                 traceback.print_exc()
             return StepResult(
@@ -184,10 +235,16 @@ class PhoneAgent:
         # Parse action from response
         try:
             action = parse_action(response.action)
-        except ValueError:
+        except ValueError as e:
             if self.agent_config.verbose:
-                traceback.print_exc()
-            action = finish(message=response.action)
+                print(f"\n⚠️ Action parse error: {e}")
+                print(f"Raw action: {response.action}")
+            # Don't finish on parse error, create a Wait action to retry
+            action = do(action="Wait", duration="2 seconds")
+
+        # Loop detection - check if we're repeating the same action
+        if self._is_loop_detected(action):
+            action = self._break_loop(screenshot.height)
 
         if self.agent_config.verbose:
             # Print thinking process
@@ -206,10 +263,13 @@ class PhoneAgent:
 
         # Execute action
         try:
+            print(f"[Agent] Executing action: {action.get('action', 'unknown')}")
             result = self.action_handler.execute(
                 action, screenshot.width, screenshot.height
             )
+            print(f"[Agent] Action result: success={result.success}, should_finish={result.should_finish}")
         except Exception as e:
+            print(f"[Agent] Action execution failed: {e}")
             if self.agent_config.verbose:
                 traceback.print_exc()
             result = self.action_handler.execute(

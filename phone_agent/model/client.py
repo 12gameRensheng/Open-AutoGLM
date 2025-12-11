@@ -18,6 +18,7 @@ class ModelConfig:
     temperature: float = 0.0
     top_p: float = 0.85
     frequency_penalty: float = 0.2
+    timeout: float = 30.0  # API request timeout in seconds
     extra_body: dict[str, Any] = field(
         default_factory=lambda: {"skip_special_tokens": False}
     )
@@ -42,7 +43,11 @@ class ModelClient:
 
     def __init__(self, config: ModelConfig | None = None):
         self.config = config or ModelConfig()
-        self.client = OpenAI(base_url=self.config.base_url, api_key=self.config.api_key)
+        self.client = OpenAI(
+            base_url=self.config.base_url,
+            api_key=self.config.api_key,
+            timeout=self.config.timeout,
+        )
 
     def request(self, messages: list[dict[str, Any]]) -> ModelResponse:
         """
@@ -57,6 +62,8 @@ class ModelClient:
         Raises:
             ValueError: If the response cannot be parsed.
         """
+        print(f"[ModelClient] Sending request to model (timeout={self.config.timeout}s)...")
+
         response = self.client.chat.completions.create(
             messages=messages,
             model=self.config.model_name,
@@ -68,9 +75,17 @@ class ModelClient:
         )
 
         raw_content = response.choices[0].message.content
+        print(f"[ModelClient] Response received, length={len(raw_content)}")
+        print(f"[ModelClient] Raw response:\n{raw_content}\n")
 
         # Parse thinking and action from response
         thinking, action = self._parse_response(raw_content)
+
+        if thinking:
+            print(f"[ModelClient] Parsed thinking: {thinking[:200]}...")
+        else:
+            print("[ModelClient] Warning: No thinking content parsed")
+        print(f"[ModelClient] Parsed action: {action}")
 
         return ModelResponse(thinking=thinking, action=action, raw_content=raw_content)
 

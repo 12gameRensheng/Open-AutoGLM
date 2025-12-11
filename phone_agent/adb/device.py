@@ -20,19 +20,29 @@ def get_current_app(device_id: str | None = None) -> str:
     """
     adb_prefix = _get_adb_prefix(device_id)
 
-    result = subprocess.run(
-        adb_prefix + ["shell", "dumpsys", "window"], capture_output=True, text=True
-    )
-    output = result.stdout
+    try:
+        result = subprocess.run(
+            adb_prefix + ["shell", "dumpsys", "window"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        output = result.stdout
 
-    # Parse window focus info
-    for line in output.split("\n"):
-        if "mCurrentFocus" in line or "mFocusedApp" in line:
-            for app_name, package in APP_PACKAGES.items():
-                if package in line:
-                    return app_name
+        # Parse window focus info
+        for line in output.split("\n"):
+            if "mCurrentFocus" in line or "mFocusedApp" in line:
+                for app_name, package in APP_PACKAGES.items():
+                    if package in line:
+                        return app_name
 
-    return "System Home"
+        return "System Home"
+    except subprocess.TimeoutExpired:
+        print("[get_current_app] Timeout")
+        return "System Home"
+    except Exception as e:
+        print(f"[get_current_app] Error: {e}")
+        return "System Home"
 
 
 def tap(x: int, y: int, device_id: str | None = None, delay: float = 1.0) -> None:
@@ -47,9 +57,16 @@ def tap(x: int, y: int, device_id: str | None = None, delay: float = 1.0) -> Non
     """
     adb_prefix = _get_adb_prefix(device_id)
 
-    subprocess.run(
-        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True
-    )
+    try:
+        subprocess.run(
+            adb_prefix + ["shell", "input", "tap", str(x), str(y)],
+            capture_output=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"[tap] Timeout at ({x}, {y})")
+    except Exception as e:
+        print(f"[tap] Error: {e}")
     time.sleep(delay)
 
 
@@ -67,13 +84,22 @@ def double_tap(
     """
     adb_prefix = _get_adb_prefix(device_id)
 
-    subprocess.run(
-        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True
-    )
-    time.sleep(0.1)
-    subprocess.run(
-        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True
-    )
+    try:
+        subprocess.run(
+            adb_prefix + ["shell", "input", "tap", str(x), str(y)],
+            capture_output=True,
+            timeout=10,
+        )
+        time.sleep(0.1)
+        subprocess.run(
+            adb_prefix + ["shell", "input", "tap", str(x), str(y)],
+            capture_output=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"[double_tap] Timeout at ({x}, {y})")
+    except Exception as e:
+        print(f"[double_tap] Error: {e}")
     time.sleep(delay)
 
 
@@ -96,11 +122,17 @@ def long_press(
     """
     adb_prefix = _get_adb_prefix(device_id)
 
-    subprocess.run(
-        adb_prefix
-        + ["shell", "input", "swipe", str(x), str(y), str(x), str(y), str(duration_ms)],
-        capture_output=True,
-    )
+    try:
+        subprocess.run(
+            adb_prefix
+            + ["shell", "input", "swipe", str(x), str(y), str(x), str(y), str(duration_ms)],
+            capture_output=True,
+            timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"[long_press] Timeout at ({x}, {y})")
+    except Exception as e:
+        print(f"[long_press] Error: {e}")
     time.sleep(delay)
 
 
@@ -133,20 +165,26 @@ def swipe(
         duration_ms = int(dist_sq / 1000)
         duration_ms = max(1000, min(duration_ms, 2000))  # Clamp between 1000-2000ms
 
-    subprocess.run(
-        adb_prefix
-        + [
-            "shell",
-            "input",
-            "swipe",
-            str(start_x),
-            str(start_y),
-            str(end_x),
-            str(end_y),
-            str(duration_ms),
-        ],
-        capture_output=True,
-    )
+    try:
+        subprocess.run(
+            adb_prefix
+            + [
+                "shell",
+                "input",
+                "swipe",
+                str(start_x),
+                str(start_y),
+                str(end_x),
+                str(end_y),
+                str(duration_ms),
+            ],
+            capture_output=True,
+            timeout=15,
+        )
+    except subprocess.TimeoutExpired:
+        print(f"[swipe] Timeout from ({start_x}, {start_y}) to ({end_x}, {end_y})")
+    except Exception as e:
+        print(f"[swipe] Error: {e}")
     time.sleep(delay)
 
 
@@ -160,9 +198,16 @@ def back(device_id: str | None = None, delay: float = 1.0) -> None:
     """
     adb_prefix = _get_adb_prefix(device_id)
 
-    subprocess.run(
-        adb_prefix + ["shell", "input", "keyevent", "4"], capture_output=True
-    )
+    try:
+        subprocess.run(
+            adb_prefix + ["shell", "input", "keyevent", "4"],
+            capture_output=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        print("[back] Timeout")
+    except Exception as e:
+        print(f"[back] Error: {e}")
     time.sleep(delay)
 
 
@@ -176,13 +221,20 @@ def home(device_id: str | None = None, delay: float = 1.0) -> None:
     """
     adb_prefix = _get_adb_prefix(device_id)
 
-    subprocess.run(
-        adb_prefix + ["shell", "input", "keyevent", "KEYCODE_HOME"], capture_output=True
-    )
+    try:
+        subprocess.run(
+            adb_prefix + ["shell", "input", "keyevent", "KEYCODE_HOME"],
+            capture_output=True,
+            timeout=10,
+        )
+    except subprocess.TimeoutExpired:
+        print("[home] Timeout")
+    except Exception as e:
+        print(f"[home] Error: {e}")
     time.sleep(delay)
 
 
-def launch_app(app_name: str, device_id: str | None = None, delay: float = 1.0) -> bool:
+def launch_app(app_name: str, device_id: str | None = None, delay: float = 2.0) -> bool:
     """
     Launch an app by name.
 
@@ -195,24 +247,74 @@ def launch_app(app_name: str, device_id: str | None = None, delay: float = 1.0) 
         True if app was launched, False if app not found.
     """
     if app_name not in APP_PACKAGES:
+        print(f"[launch_app] App '{app_name}' not in APP_PACKAGES")
         return False
 
     adb_prefix = _get_adb_prefix(device_id)
     package = APP_PACKAGES[app_name]
 
-    subprocess.run(
-        adb_prefix
-        + [
-            "shell",
-            "monkey",
-            "-p",
-            package,
-            "-c",
-            "android.intent.category.LAUNCHER",
-            "1",
-        ],
-        capture_output=True,
-    )
+    try:
+        # Method 1: Try using am start (more reliable)
+        result = subprocess.run(
+            adb_prefix
+            + [
+                "shell",
+                "am",
+                "start",
+                "-n",
+                f"{package}/.main.MainActivity",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+
+        # If am start with specific activity fails, try launching via monkey
+        if result.returncode != 0 or "Error" in result.stderr:
+            result = subprocess.run(
+                adb_prefix
+                + [
+                    "shell",
+                    "monkey",
+                    "-p",
+                    package,
+                    "-c",
+                    "android.intent.category.LAUNCHER",
+                    "1",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            print(f"[launch_app] monkey stdout: {result.stdout}")
+            print(f"[launch_app] monkey stderr: {result.stderr}")
+
+            # If monkey also fails, try am start with just package
+            if result.returncode != 0 or "No activities found" in result.stdout:
+                result = subprocess.run(
+                    adb_prefix
+                    + [
+                        "shell",
+                        "am",
+                        "start",
+                        "-a",
+                        "android.intent.action.MAIN",
+                        "-c",
+                        "android.intent.category.LAUNCHER",
+                        "-p",
+                        package,
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                )
+                print(f"[launch_app] am start stdout: {result.stdout}")
+                print(f"[launch_app] am start stderr: {result.stderr}")
+    except subprocess.TimeoutExpired:
+        print(f"[launch_app] Timeout launching {app_name}")
+    except Exception as e:
+        print(f"[launch_app] Error: {e}")
+
     time.sleep(delay)
     return True
 

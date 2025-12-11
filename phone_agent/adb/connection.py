@@ -1,10 +1,14 @@
 """ADB connection management for local and remote devices."""
 
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
+
+# Windows: hide console window when running subprocess
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 
 class ConnectionType(Enum):
@@ -76,6 +80,7 @@ class ADBConnection:
                 capture_output=True,
                 text=True,
                 timeout=timeout,
+                creationflags=CREATE_NO_WINDOW,
             )
 
             output = result.stdout + result.stderr
@@ -107,7 +112,8 @@ class ADBConnection:
             if address:
                 cmd.append(address)
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5,
+                                   creationflags=CREATE_NO_WINDOW)
 
             output = result.stdout + result.stderr
             return True, output.strip() or "Disconnected"
@@ -128,6 +134,7 @@ class ADBConnection:
                 capture_output=True,
                 text=True,
                 timeout=5,
+                creationflags=CREATE_NO_WINDOW,
             )
 
             devices = []
@@ -239,7 +246,8 @@ class ADBConnection:
                 cmd.extend(["-s", device_id])
             cmd.extend(["tcpip", str(port)])
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10,
+                                   creationflags=CREATE_NO_WINDOW)
 
             output = result.stdout + result.stderr
 
@@ -268,7 +276,8 @@ class ADBConnection:
                 cmd.extend(["-s", device_id])
             cmd.extend(["shell", "ip", "route"])
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5,
+                                   creationflags=CREATE_NO_WINDOW)
 
             # Parse IP from route output
             for line in result.stdout.split("\n"):
@@ -285,6 +294,7 @@ class ADBConnection:
                 capture_output=True,
                 text=True,
                 timeout=5,
+                creationflags=CREATE_NO_WINDOW,
             )
 
             for line in result.stdout.split("\n"):
@@ -309,14 +319,16 @@ class ADBConnection:
         try:
             # Kill server
             subprocess.run(
-                [self.adb_path, "kill-server"], capture_output=True, timeout=5
+                [self.adb_path, "kill-server"], capture_output=True, timeout=5,
+                creationflags=CREATE_NO_WINDOW
             )
 
             time.sleep(1)
 
             # Start server
             subprocess.run(
-                [self.adb_path, "start-server"], capture_output=True, timeout=5
+                [self.adb_path, "start-server"], capture_output=True, timeout=5,
+                creationflags=CREATE_NO_WINDOW
             )
 
             return True, "ADB server restarted"

@@ -2,6 +2,8 @@
   + 这个分支我使用Claude Code ai编程改动了几个文件
   + 可以查看提交日志 方便没有显卡的进行体验 直接使用魔塔的api模型
   + 需要新建一个.env文件 把 .env.example里面的复制过去 改下令牌即可
+  + 演示效果图：![](./demo.png)
+  + 交流群二维码：![](./qrcodeQun.png)
 
 [Readme in English](README_en.md)
 

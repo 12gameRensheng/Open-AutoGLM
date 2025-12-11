@@ -2,10 +2,14 @@
 
 import os
 import subprocess
+import sys
 import time
 from typing import List, Optional, Tuple
 
 from phone_agent.config.apps import APP_PACKAGES
+
+# Windows: hide console window when running subprocess
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 
 def get_current_app(device_id: str | None = None) -> str:
@@ -21,7 +25,8 @@ def get_current_app(device_id: str | None = None) -> str:
     adb_prefix = _get_adb_prefix(device_id)
 
     result = subprocess.run(
-        adb_prefix + ["shell", "dumpsys", "window"], capture_output=True, text=True
+        adb_prefix + ["shell", "dumpsys", "window"], capture_output=True, text=True,
+        creationflags=CREATE_NO_WINDOW
     )
     output = result.stdout
 
@@ -49,7 +54,8 @@ def tap(x: int, y: int, device_id: str | None = None, delay: float = 1.0) -> Non
     cmd = adb_prefix + ["shell", "input", "tap", str(x), str(y)]
     print(f"[DEBUG] Executing tap: {' '.join(cmd)}")
 
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True,
+                           creationflags=CREATE_NO_WINDOW)
     if result.returncode != 0:
         print(f"[DEBUG] Tap failed: {result.stderr}")
     time.sleep(delay)
@@ -70,11 +76,13 @@ def double_tap(
     adb_prefix = _get_adb_prefix(device_id)
 
     subprocess.run(
-        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True
+        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True,
+        creationflags=CREATE_NO_WINDOW
     )
     time.sleep(0.1)
     subprocess.run(
-        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True
+        adb_prefix + ["shell", "input", "tap", str(x), str(y)], capture_output=True,
+        creationflags=CREATE_NO_WINDOW
     )
     time.sleep(delay)
 
@@ -102,6 +110,7 @@ def long_press(
         adb_prefix
         + ["shell", "input", "swipe", str(x), str(y), str(x), str(y), str(duration_ms)],
         capture_output=True,
+        creationflags=CREATE_NO_WINDOW,
     )
     time.sleep(delay)
 
@@ -148,6 +157,7 @@ def swipe(
             str(duration_ms),
         ],
         capture_output=True,
+        creationflags=CREATE_NO_WINDOW,
     )
     time.sleep(delay)
 
@@ -163,7 +173,8 @@ def back(device_id: str | None = None, delay: float = 1.0) -> None:
     adb_prefix = _get_adb_prefix(device_id)
 
     subprocess.run(
-        adb_prefix + ["shell", "input", "keyevent", "4"], capture_output=True
+        adb_prefix + ["shell", "input", "keyevent", "4"], capture_output=True,
+        creationflags=CREATE_NO_WINDOW
     )
     time.sleep(delay)
 
@@ -179,7 +190,8 @@ def home(device_id: str | None = None, delay: float = 1.0) -> None:
     adb_prefix = _get_adb_prefix(device_id)
 
     subprocess.run(
-        adb_prefix + ["shell", "input", "keyevent", "KEYCODE_HOME"], capture_output=True
+        adb_prefix + ["shell", "input", "keyevent", "KEYCODE_HOME"], capture_output=True,
+        creationflags=CREATE_NO_WINDOW
     )
     time.sleep(delay)
 
@@ -214,6 +226,7 @@ def launch_app(app_name: str, device_id: str | None = None, delay: float = 1.0) 
             "1",
         ],
         capture_output=True,
+        creationflags=CREATE_NO_WINDOW,
     )
     time.sleep(delay)
     return True

@@ -3,6 +3,7 @@
 import base64
 import os
 import subprocess
+import sys
 import tempfile
 import uuid
 from dataclasses import dataclass
@@ -10,6 +11,9 @@ from io import BytesIO
 from typing import Tuple
 
 from PIL import Image
+
+# Windows: hide console window when running subprocess
+CREATE_NO_WINDOW = 0x08000000 if sys.platform == "win32" else 0
 
 
 @dataclass
@@ -47,6 +51,7 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             capture_output=True,
             text=True,
             timeout=timeout,
+            creationflags=CREATE_NO_WINDOW,
         )
 
         # Check for screenshot failure (sensitive screen)
@@ -60,6 +65,7 @@ def get_screenshot(device_id: str | None = None, timeout: int = 10) -> Screensho
             capture_output=True,
             text=True,
             timeout=5,
+            creationflags=CREATE_NO_WINDOW,
         )
 
         if not os.path.exists(temp_path):

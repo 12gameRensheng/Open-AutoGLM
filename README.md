@@ -4,6 +4,11 @@
   + 需要新建一个.env文件 把 .env.example里面的复制过去 改下令牌即可
   + 演示效果图：![](./demo.png)
   + 交流群二维码：![](./qrcodeQun.png)
+  + 打包ui版本：
+    + `pyinstaller ui_main.spec --clean`
+  + 打包控制台版本：
+    + `pyinstaller main.spec --clean`
+
 
 [Readme in English](README_en.md)
 
